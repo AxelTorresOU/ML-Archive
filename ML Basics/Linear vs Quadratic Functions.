@@ -91,3 +91,10 @@ with torch.no_grad():
 print(f"Quadratic probability: {probability:.3f}")
 print("Quadratic" if probability >= 0.5 else "Linear")
 
+# questions and stuff to do next:
+# add noise and investigate failures such as
+# f(x) = a * x**2 + b * x + c + ε where ε ~ N(0,σ**2)
+# plot accuracy against σ 
+# how small can a get before model struggles?
+# new project: move from classification to regression
+# apply to a physics problem later
