@@ -1,0 +1,93 @@
+import torch
+from torch import nn
+
+torch.manual_seed(42)
+
+number_of_functions = 2000
+number_of_points = 50
+
+# Shape: (50,)
+x = torch.linspace(-3,3,number_of_points)
+
+# Shape: (2000,1)
+lables = torch.randint(0,2,(number_of_functions, 1)).float()
+
+#Random coefficients for each function
+#Keep a away from zero so quadratics have visible curvature.
+sign = 2 * torch.randint(0 , 2, (number_of_functions, 1)) - 1
+a = sign * (0.5 +2.5 * torch.rand(number_of_functions, 1))
+b = 6 * torch.rand(number_of_functions, 1) - 3
+
+c = 6 * torch.rand(number_of_functions, 1) - 3
+
+#when label = 0, the quadratic term disappears.
+#shape: (2000,50)
+features = lables * a * x**2 +b*x +c
+
+#separate training examples from test examples
+Xtrain, Xtest = features[:1600], features[1600:]
+Ytrain, Ytest = lables[:1600], lables[1600:]
+
+#scale inputs using statistics from the training set only
+
+mean = Xtrain.mean(dim=0)
+std = Xtrain.std(dim=0)
+
+Xtrain = (Xtrain-mean)/std
+Xtest = (Xtest - mean)/std
+
+#Neural Network
+
+model = nn.Sequential(
+        nn.Linear(50,32),
+        nn.ReLU(),
+        nn.Linear(32,1)
+    )
+
+#Training
+
+loss_function = nn.BCEWithLogitsLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+model.train()
+
+for epoch in range(300):
+    
+    logits = model(Xtrain)
+
+    loss = loss_function(logits, Ytrain)
+
+    optimizer.zero_grad()
+
+    loss.backward()
+
+    optimizer.step()
+
+    if epoch % 50 == 0:
+        print (f"Epoch {epoch}: loss = {loss.item():.4f}")
+
+
+#Test on unseen functions
+
+model.eval()
+with torch.no_grad():
+    probabilities = torch.sigmoid(model(Xtest))
+    predictions = (probabilities >= 0.5).float()
+    
+    accuracy = (predictions ==Ytest).float().mean()
+    print(f"Test accuracy: {accuracy.item() : .1%}")
+
+#F(x)
+
+def f(x):
+    return x
+
+samples = f(x).unsqueeze(0)
+samples = (samples-mean)/std
+
+with torch.no_grad():
+    probability = torch.sigmoid(model(samples)).item()
+
+print(f"Quadratic probability: {probability:.3f}")
+print("Quadratic" if probability >= 0.5 else "Linear")
+
